@@ -1,0 +1,506 @@
+---
+title: "NYC Taxi Tip Forecasting"
+author: "Muskan Shokeen"
+date: "2024-04-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+taxi = read.csv('/Users/muskan/Desktop/Columbia Documents/Semester 1/Frameworks_and_Methods_1/Datasets/taxi.csv') 
+taxi$pickup_day = factor(x = taxi$pickup_day,levels = c('Mon','Tue','Wed','Thu','Fri','Sat','Sun')) 
+taxi$period_of_month = factor(x = taxi$period_of_month,levels = c('beginning','middle','end')) 
+taxi$period_of_day = factor(x = taxi$period_of_day, levels = c('morning','afternoon', 'evening','night'))
+```
+
+split the data, taxi, into a train and test sample such that 70% of the data is in the train sample. To ensure a similar distribution of “tip_amount” across the train and test samples, use createDataPartition from library(caret). Set groups to 200 and use a seed of 1031. 
+
+```{r}
+library(caret)
+set.seed(1031)
+split = createDataPartition(y = taxi$tip_amount, p = 0.7, list = F, groups = 200)
+
+train = taxi[split,] #use this sample to work unless otherwise stated
+test = taxi[-split,]
+
+train
+
+```
+
+tip_amount median of train data set
+
+```{r}
+median(test$tip_amount)
+```
+
+Construct a scatter plot to examine the relationship between distance (trip_distance) and tip amount (tip_amount). Place trip_distance on the x-axis and tip_amount on the y-axis. What is the direction of the points?
+
+```{r}
+library(ggplot2)
+ggplot(data=train,aes(x=trip_distance,y=tip_amount))+
+  geom_point(size=0.9)+
+  coord_cartesian(ylim=c(0,80))
+```
+Correlation between trip_distance and tip_amount? (Do you see a link between the scatter plot and the correlation measure?)
+
+```{r}
+cor(train$trip_distance, train$tip_amount)
+```
+
+Which variables have the strongest correlation with tip_amount?
+
+
+```{r}
+#fare_amount
+cor(train$fare_amount, train$tip_amount)
+#trip_distance
+cor(train$trip_distance, train$tip_amount)
+#tolls_amount
+cor(train$tolls_amount, train$tip_amount)
+#trip_duration
+cor(train$trip_duration, train$tip_amount)
+```
+One would expect those who ride a taxi for a long distance will tip more generously. To examine this hypothesis, construct a simple regression to predict tip_amount with trip_distance. Call this model1. What is the p-value for the F-statistic?
+Group of answer choices
+
+```{r}
+model1 = lm(tip_amount~trip_distance,data=train)
+```
+
+Predict
+
+```{r}
+summary(model1)
+```
+
+
+
+```{r}
+predict(model1)[1]
+```
+The first trip (i.e., first row) in the train data covered a distance of 1.26 miles. Based on model1, what is the predicted tip_amount for this trip?
+
+```{r}
+pred = predict(model1)
+data.frame(tip_amount = train$tip_amount[1:10], prediction = pred[1:10])
+```
+
+```{r}
+summary(model1)
+```
+What is the R-squared (R2) for model1? (Think about what this says about model performance).
+
+```{r}
+sse = sum((pred - train$tip_amount)^2)
+sst = sum((mean(train$tip_amount)-train$tip_amount)^2)
+model1_r2 = 1 - sse/sst; model1_r2
+```
+
+```{r}
+rmse1 = sqrt(mean((pred-train$tip_amount)^2)); rmse1
+```
+
+Imagine a person takes a taxi to go to work, 10 miles away. Based on model1, how much do you think they will tip?
+
+```{r}
+predict(model1, newdata = data.frame(trip_distance = 10))
+```
+
+```{r}
+summary(model1)
+```
+Let us see if passengers tip more generously at certain times of the day. Construct a model to predict tip_amount based on period_of_day. Call this model2. 
+
+```{r}
+model2 <- lm(tip_amount ~ period_of_day, data = train)
+summary(model2)
+
+```
+It is conceivable that the trips vary by day of the week. To investigate this, construct a model to predict tip_amount based on pickup_day. Call this model3.
+```{r}
+# Constructing the model to predict tip_amount based on pickup_day
+model3 <- lm(tip_amount ~ pickup_day, data = train)
+
+```
+
+```{r}
+# Build a linear regression model (model4) to predict tip_amount based on passenger_count
+model4 <- lm(tip_amount ~ passenger_count, data = train)
+
+# Summary of the model
+summary(model4)
+
+```
+RMSE of all models
+
+```{r}
+# Step 1: Calculate the residuals using model1
+residuals <- train$tip_amount - predict(model1)
+
+# Step 2: Square each residual
+squared_residuals <- residuals^2
+
+# Step 3: Calculate the mean of squared residuals
+mean_squared_residuals <- mean(squared_residuals)
+
+# Step 4: Calculate the RMSE
+rmse <- sqrt(mean_squared_residuals)
+
+# Print the RMSE for model1
+print(paste("RMSE for model1:", rmse))
+
+```
+
+```{r}
+# Step 1: Calculate the residuals using model2
+residuals <- train$tip_amount - predict(model2)
+
+# Step 2: Square each residual
+squared_residuals <- residuals^2
+
+# Step 3: Calculate the mean of squared residuals
+mean_squared_residuals <- mean(squared_residuals)
+
+# Step 4: Calculate the RMSE
+rmse <- sqrt(mean_squared_residuals)
+
+# Print the RMSE for model1
+print(paste("RMSE for model2:", rmse))
+```
+```{r}
+# Step 1: Calculate the residuals using model3
+residuals <- train$tip_amount - predict(model3)
+
+# Step 2: Square each residual
+squared_residuals <- residuals^2
+
+# Step 3: Calculate the mean of squared residuals
+mean_squared_residuals <- mean(squared_residuals)
+
+# Step 4: Calculate the RMSE
+rmse <- sqrt(mean_squared_residuals)
+
+# Print the RMSE for model1
+print(paste("RMSE for model3:", rmse))
+```
+
+
+```{r}
+# Step 1: Calculate the residuals using model4
+residuals <- train$tip_amount - predict(model4)
+
+# Step 2: Square each residual
+squared_residuals <- residuals^2
+
+# Step 3: Calculate the mean of squared residuals
+mean_squared_residuals <- mean(squared_residuals)
+
+# Step 4: Calculate the RMSE
+rmse <- sqrt(mean_squared_residuals)
+
+# Print the RMSE for model1
+print(paste("RMSE for model4:", rmse))
+```
+
+```{r}
+summary(model3)
+```
+Generally speaking, including a larger number of meaningful predictors will improve the quality of predictions. It is reasonable to expect the following predictors to influence tip paid: number of passengers (passenger_count), fare amount (fare_amount), hour of the day of the ride (pickup_hour), whether the trip occurred in the beginning, middle or end of the month (period_of_month), and day of the week for the trip (pickup_day). Use these variables in a multiple regression to predict tip_amount. Call this model5.
+
+```{r}
+model5 = lm(tip_amount~passenger_count+fare_amount+pickup_hour+period_of_month+pickup_day,data=train)
+summary(model5)
+```
+
+```{r}
+# Step 1: Calculate the residuals using model5
+residuals <- train$tip_amount - predict(model5)
+
+# Step 2: Square each residual
+squared_residuals <- residuals^2
+
+# Step 3: Calculate the mean of squared residuals
+mean_squared_residuals <- mean(squared_residuals)
+
+# Step 4: Calculate the RMSE
+rmse <- sqrt(mean_squared_residuals)
+
+# Print the RMSE for model1
+print(paste("RMSE for model5:", rmse))
+```
+
+Now, let us explore non-linear relationships of fare_amount and pickup_hour by including polynomial terms. Modify model5 by replacing fare_amount with poly(fare_amount, 2) and pickup_hour with poly(pickup_hour, 2). Keep the rest of the model the same. Call this model6.
+
+```{r}
+model6 = lm(tip_amount~passenger_count+poly(fare_amount, 2)+poly(pickup_hour, 2)+period_of_month+pickup_day,data=train)
+summary(model6)
+```
+
+```{r}
+# Step 1: Calculate the residuals using model5
+residuals <- train$tip_amount - predict(model6)
+
+# Step 2: Square each residual
+squared_residuals <- residuals^2
+
+# Step 3: Calculate the mean of squared residuals
+mean_squared_residuals <- mean(squared_residuals)
+
+# Step 4: Calculate the RMSE
+rmse <- sqrt(mean_squared_residuals)
+
+# Print the RMSE for model1
+print(paste("RMSE for model6:", rmse))
+```
+
+Use the variables in model5, to fit a Generalized Additive Model using method="REML". Use smoothing functions for fare_amount [i.e.,s(fare_amount)] and pickup_hour [i.e., s(pickup_hour)]. Leave the other variables unchanged. Call this model7.
+
+```{r}
+library(mgcv)
+
+# Fit a GAM with smoothing functions
+model7 <- gam(tip_amount ~ passenger_count + s(fare_amount) + s(pickup_hour) + 
+               period_of_month + pickup_day, data = train, method = "REML")
+
+# Summary of the model
+summary(model7)
+
+```
+
+```{r}
+# Step 1: Calculate the residuals using model5
+residuals <- train$tip_amount - predict(model7)
+
+# Step 2: Square each residual
+squared_residuals <- residuals^2
+
+# Step 3: Calculate the mean of squared residuals
+mean_squared_residuals <- mean(squared_residuals)
+
+# Step 4: Calculate the RMSE
+rmse <- sqrt(mean_squared_residuals)
+
+# Print the RMSE for model1
+print(paste("RMSE for model7:", rmse))
+```
+
+```{r}
+# 'model5' is the linear regression model
+
+# Make predictions on the test dataset using model5
+predictions <- predict(model5, newdata = test)
+
+# Calculate residuals
+residuals <- test$tip_amount - predictions
+
+# Calculate RMSE
+rmse <- sqrt(mean(residuals^2))
+
+# Print RMSE
+print(paste("RMSE for model5 on the test dataset:", rmse))
+
+```
+
+Compute the RMSE for model7 on the test sample.
+
+```{r}
+# 'model7' is the linear regression model
+
+# Make predictions on the test dataset using model5
+predictions <- predict(model7, newdata = test)
+
+# Calculate residuals
+residuals <- test$tip_amount - predictions
+
+# Calculate RMSE
+rmse <- sqrt(mean(residuals^2))
+
+# Print RMSE
+print(paste("RMSE for model7 on the test dataset:", rmse))
+```
+
+LOGISTIC REGRESSION 
+```{r cars}
+taxi = read.csv('/Users/muskan/Desktop/Columbia Documents/Semester 1/Frameworks_and_Methods_1/Datasets/taxi_class.csv') 
+taxi$pickup_day = factor(x = taxi$pickup_day,levels = c('Mon','Tue','Wed','Thu','Fri','Sat','Sun')) 
+taxi$period_of_month = factor(x = taxi$period_of_month,levels = c('beginning','middle','end')) 
+taxi$period_of_day = factor(x = taxi$period_of_day, levels = c('morning','afternoon', 'evening', 'night'))
+
+```
+
+split the data into a train and test sample such that 70% of the data is in the train sample. To ensure a similar distribution of “tip” across the train and test samples, use sample.split from the caTools package. Set a seed of 617. What percentage of trips in the train data included a tip. [Unless stated otherwise, use the train sample for conducting analysis.]
+
+```{r}
+taxi
+```
+ 
+ 
+```{r}
+# Load the caTools package for sample.split
+library(caTools)
+
+# Set a seed for reproducibility
+set.seed(617)
+split <- sample.split(taxi$tip, SplitRatio = 0.7)
+
+# Create the train and test datasets
+train_data <- taxi[split, ]
+test_data <- taxi[!split, ]
+
+# Calculate the percentage of trips in the train data that included a tip
+print(percentage_with_tip <- mean(train_data$tip > 0) * 100)
+```
+
+```{r}
+tapply(train_data$tip,train_data$trip_duration,mean)
+```
+
+```{r}
+# Calculate the average trip duration for trips with tips
+average_duration_with_tip <- mean(train_data$trip_duration[train_data$tip == 1])
+
+# Calculate the average trip duration for trips without tips
+average_duration_without_tip <- mean(train_data$trip_duration[train_data$tip == 0])
+
+# Create a bar chart to visualize the comparison
+bar_data <- data.frame(
+  TipStatus = c("With Tip", "Without Tip"),
+  AverageDuration = c(average_duration_with_tip, average_duration_without_tip)
+)
+
+# Load the ggplot2 package for creating plots
+library(ggplot2)
+
+# Create the bar chart
+ggplot(bar_data, aes(x = TipStatus, y = AverageDuration)) +
+  geom_bar(stat = "identity", fill = "blue") +
+  labs(title = "Average Trip Duration with and without Tips") +
+  xlab("Tip Status") +
+  ylab("Average Trip Duration")
+```
+ 
+ Tip percent is the percent of trips when a tip was given. Compare Tip percent across different periods of the day (period_of_day). As with the previous question, you can answer this question by computing variable summaries but charting the trend may be more interesting. Select the period when Tip percent is the highest.
+ 
+```{r}
+tapply(train_data$tip,train_data$period_of_day,mean)
+```
+ 
+```{r}
+ggplot(data=train_data,aes(x=period_of_day,y=tip,fill=period_of_day))+
+  geom_bar(stat='summary',fun='mean')+
+  guides(fill='none')+
+  coord_flip()
+```
+The truth is often more nuanced. Following up on the previous question, examine tip percentage at a more granular level by looking at hour of the day when the passenger was picked up (pickup_hour). As with the previous question, you can answer this question by computing variable summaries but charting the trend may be more interesting. Select the hour of the day when Tip percent is the highest.
+
+```{r}
+tapply(train_data$tip,train_data$pickup_hour,mean)
+```
+```{r}
+ggplot(data=train_data,aes(x=pickup_hour,y=tip,fill=pickup_hour))+
+  geom_bar(stat='summary',fun='mean')+
+  guides(fill='none')+
+  coord_flip()
+```
+Compare Tip percent across different days of the week (pickup_day). As with the previous question, you can answer this question by computing variable summaries but charting the trend may be more interesting. Select the day when Tip percent is the lowest.
+
+```{r}
+tapply(train_data$tip,train_data$pickup_day,mean)
+```
+
+```{r}
+ggplot(data=train_data,aes(x=pickup_day,y=tip,fill=pickup_hour))+
+  geom_bar(stat='summary',fun='mean')+
+  guides(fill='none')+
+  coord_flip()
+```
+ Finally, compare tip percent across different periods of the month (period_of_month). As with the previous question, you can answer this question by computing variable summaries but charting the trend may be more interesting. Select the period of the month when Tip percent is the highest.
+ 
+```{r}
+ggplot(data=train_data,aes(x=period_of_month,y=tip,fill=period_of_month))+
+  geom_bar(stat='summary',fun='mean')+
+  guides(fill='none')+
+  coord_flip()
+```
+ One would expect long taxi rides to be associated with tipping. To examine this hypothesis, construct a logistic regression to predict tip with trip_duration. Call this model1. Review model summary. Does trip_duration have a statistically significant influence on tip?
+
+```{r}
+model_taxi1 = glm(tip~trip_duration,data=train_data,family='binomial')
+summary(model_taxi1)
+```
+ Based on model1, what is the probability that a person who rode a taxi for 15 min will tip the driver?
+```{r}
+predict(model_taxi1,newdata=data.frame(trip_duration=15),type='response') 
+```
+Answer this question based on model1. With every passing minute (i.e., increase in trip_duration by one minute), what is the percent change in likelihood of tip?
+Group of answer choices
+
+```{r}
+100*(exp(summary(model_taxi1)$coef[2])-1)
+```
+Let us see if tipping varies by time of day. Construct a logistic regression model to predict tip based on period_of_day. Call this model2. Based on model2, which of the following are true. Select one or more correct answers.
+
+```{r}
+model_taxi2 = glm(tip~period_of_day,data=train_data,family='binomial')
+summary(model_taxi2)
+```
+Based on model2, what is the probability that a person who rode a taxi in the afternoon will tip the driver?
+```{r}
+predict(model_taxi2,newdata=data.frame(period_of_day='afternoon'),type='response')
+```
+
+Generally speaking, including a larger number of meaningful predictors will improve the quality of predictions. It is reasonable to expect the following predictors to influence whether the driver is given a tip:
+
+number of passengers (passenger_count), trip duration (trip_duration), hour of the day of the ride (pickup_hour), whether the trip occurred in the beginning, middle or end of the month (period_of_month), and day of the week for the trip (pickup_day).
+
+Use these variables in a logistic regression model to predict tip. Call this model3. Which of the following variables are significant predictors of tip? Please note, a categorical predictor variable is statistically significant if even one of the dummy variables representing it is statistically significant. Select one or more correct answers.
+```{r}
+model_taxi3 = glm(tip~passenger_count+trip_duration+pickup_hour+period_of_month+pickup_day,
+             data=train_data,
+             family='binomial')
+summary(model_taxi3)
+```
+It is plausible that the decision to tip is based on the fare. To incorporate this possibility, modify model3 by replacing trip_duration with fare_amount so that the new model includes the following predictors: number of passengers (passenger_count), fare (fare_amount), hour of the day of the ride (pickup_hour), whether the trip occurred in the beginning, middle or end of the month (period_of_month), and day of the week for the trip (pickup_day). Use these variables in a logistic regression model to predict tip. Call this model4. (In case you are wondering, why we did not include both fare_amount and trip_duration in model4, it is because they are highly correlated, which would result in a model with high multicollinearity.)
+
+Which of the following variables are significant predictors of tip? Please note, a categorical variable is statistically significant if even one of the dummy variables representing it is statistically significant. Select one or more correct answers.
+
+```{r}
+model_taxi4 = glm(tip~passenger_count+fare_amount+pickup_hour+period_of_month+pickup_day,
+             data=train_data,
+             family='binomial')
+summary(model_taxi4)
+```
+
+```{r}
+dev = model_taxi2$deviance
+nulldev = model_taxi2$null.deviance
+n = nrow(test_data)
+mcfadden_r2 = 1 - dev/nulldev
+cox_and_snell_r2 = 1 - exp(-(nulldev - dev)/n)
+cox_and_snell_r2
+```
+
+```{r}
+pred = predict(model_taxi1,newdata=train_data,type='response')
+ct = table(tip = train_data$tip,
+           predictions = as.integer(pred>0.5)); ct
+```
+```{r}
+accuracy = sum(ct[1,1],ct[2,2])/nrow(train_data); accuracy
+```
+
+```{r}
+library(ROCR)
+ROCRpred = prediction(pred,train_data$tip)
+ROCRperf = performance(ROCRpred,"tpr","fpr")
+plot(ROCRperf)
+```
+```{r}
+as.numeric(performance(ROCRpred,"auc")@y.values) # auc measure
+```
+
+
+
